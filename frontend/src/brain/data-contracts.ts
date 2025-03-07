@@ -573,6 +573,183 @@ export type GetVoiceOverAudioDataData = any;
 
 export type GetVoiceOverAudioDataError = HTTPValidationError;
 
+export interface VideoClip {
+  /**
+   * Id
+   * Unique identifier for the video clip
+   */
+  id: string;
+  /**
+   * Title
+   * Title of the video clip
+   */
+  title: string;
+  /**
+   * Thumbnail Url
+   * URL to the thumbnail image for the clip
+   */
+  thumbnail_url: string;
+  /**
+   * Duration
+   * Duration of the clip in seconds
+   */
+  duration: number;
+  /**
+   * Tags
+   * List of tags associated with the clip
+   */
+  tags: string[];
+  /**
+   * Source
+   * Source of the video clip (e.g., stock, user-uploaded)
+   */
+  source: string;
+  /**
+   * Url
+   * URL to the video clip
+   */
+  url: string;
+}
+
+export interface VideoClipListResponse {
+  /**
+   * Clips
+   * List of video clips
+   */
+  clips: VideoClip[];
+}
+
+export interface VideoGenerationResponse {
+  /**
+   * Id
+   * Unique identifier for the video generation job
+   */
+  id: string;
+  /**
+   * Script Id
+   * ID of the script used for the video
+   */
+  script_id: string;
+  /**
+   * Voice Over Id
+   * ID of the voice-over used for the video
+   */
+  voice_over_id: string;
+  /**
+   * Status
+   * Status of the video generation job
+   */
+  status: string;
+  /**
+   * Message
+   * Status message for the video generation job
+   */
+  message?: string;
+  /**
+   * Created At
+   * Timestamp when the video generation job was created
+   */
+  created_at: string;
+  /**
+   * Completed At
+   * Timestamp when the video generation job was completed
+   */
+  completed_at?: string;
+  /**
+   * Url
+   * URL to the generated video
+   */
+  url?: string;
+  /**
+   * Thumbnail Url
+   * URL to the thumbnail image for the video
+   */
+  thumbnail_url?: string;
+}
+
+export interface FinalVideo {
+  /**
+   * Id
+   * Unique identifier for the final video
+   */
+  id: string;
+  /**
+   * Title
+   * Title of the video
+   */
+  title: string;
+  /**
+   * Description
+   * Description of the video
+   */
+  description: string;
+  /**
+   * Duration
+   * Duration of the video in seconds
+   */
+  duration: number;
+  /**
+   * Url
+   * URL to the video file
+   */
+  url: string;
+  /**
+   * Thumbnail Url
+   * URL to the thumbnail image for the video
+   */
+  thumbnail_url: string;
+  /**
+   * Created At
+   * Timestamp when the video was created
+   */
+  created_at: string;
+  /**
+   * Story Id
+   * ID of the original story
+   */
+  story_id: string;
+  /**
+   * Script Id
+   * ID of the script used for the video
+   */
+  script_id: string;
+  /**
+   * Voice Over Id
+   * ID of the voice-over used for the video
+   */
+  voice_over_id: string;
+  /**
+   * Status
+   * Status of the video
+   */
+  status: string;
+  /**
+   * Resolution
+   * Resolution of the video
+   */
+  resolution: string;
+  /**
+   * File Size
+   * Size of the video file in bytes
+   */
+  file_size: number;
+}
+
+export type ListVideoClipsData = VideoClipListResponse;
+export type ListVideoClipsError = HTTPValidationError;
+
+export type GenerateVideoData = VideoGenerationResponse;
+export type GenerateVideoError = HTTPValidationError;
+
+export type GetFinalVideoData = FinalVideo;
+export type GetFinalVideoError = HTTPValidationError;
+
+export type UpdateFinalVideoData = FinalVideo;
+export type UpdateFinalVideoError = HTTPValidationError;
+
+export type ListFinalVideosData = FinalVideo[];
+export type ListFinalVideosError = HTTPValidationError;
+
 export interface GenerateScriptParams {
   /** User Id */
   user_id: string;

@@ -26,7 +26,7 @@ const constructClient = () => {
   const baseUrl = constructBaseUrl();
   const baseApiParams = constructBaseApiParams();
 
-  return new Brain({
+  const client = new Brain({
     baseUrl,
     baseApiParams,
     securityWorker: async () => {
@@ -37,6 +37,51 @@ const constructClient = () => {
       };
     },
   });
+
+  // Add video clips endpoints
+  client.list_video_clips = async (params = {}) => {
+    return client.request({
+      url: `/video-clips/clips`,
+      method: "GET",
+      params,
+    });
+  };
+
+  client.generate_video = async ({ user_id, ...body }) => {
+    return client.request({
+      url: `/video-clips/generate`,
+      method: "POST",
+      params: { user_id },
+      body,
+    });
+  };
+
+  client.get_final_video = async ({ user_id, video_id }) => {
+    return client.request({
+      url: `/video-clips/videos/${video_id}`,
+      method: "GET",
+      params: { user_id },
+    });
+  };
+
+  client.update_final_video = async ({ user_id, video_id, ...body }) => {
+    return client.request({
+      url: `/video-clips/videos/${video_id}`,
+      method: "PATCH",
+      params: { user_id },
+      body,
+    });
+  };
+
+  client.list_final_videos = async ({ user_id }) => {
+    return client.request({
+      url: `/video-clips/videos`,
+      method: "GET",
+      params: { user_id },
+    });
+  };
+
+  return client;
 };
 
 const brain = constructClient();

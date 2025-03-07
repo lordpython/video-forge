@@ -38,6 +38,10 @@ def import_api_routers() -> APIRouter:
         for p in apis_path.glob("*/__init__.py")
     ]
 
+    # Ensure video_clips is in the list of API names
+    if "video_clips" not in api_names:
+        api_names.append("video_clips")
+
     api_module_prefix = "app.apis."
 
     for name in api_names:
