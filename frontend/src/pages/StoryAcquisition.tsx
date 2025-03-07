@@ -135,9 +135,10 @@ export default function StoryAcquisition() {
       
       console.log("Story submitted successfully:", data);
       
-      // Navigate to dashboard with success message
-      // TODO: We could navigate to a script generation page when it's ready
-      navigate('/Dashboard', { state: { success: true, message: "Story created successfully! Your video production is now in queue." } });
+      // Navigate to script generation page with the story ID
+      navigate(`/script-generation?id=${data.id}`, { 
+        state: { success: true, message: "Story created successfully! Now let's generate a script." } 
+      });
     } catch (error) {
       console.error("Error submitting story:", error);
       setSubmitError("Failed to create story. Please try again.");

@@ -240,6 +240,15 @@ const VoiceOver: React.FC = () => {
     // Navigate to the next page with the story, script, and voice-over IDs
     navigate(`/video-clips?id=${storyId}&script_id=${scriptId}&voice_over_id=${activeVoiceOver.id}`);
   };
+  
+  const handleBackToScript = () => {
+    if (!storyId) {
+      navigate("/dashboard");
+      return;
+    }
+    
+    navigate(`/script-generation?id=${storyId}`);
+  };
 
   // Format script content for display
   const getScriptContent = () => {
@@ -286,7 +295,7 @@ const VoiceOver: React.FC = () => {
             <p className="text-gray-400 mt-2">Create a professional voice-over for your video</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => navigate(-1)}>
+            <Button variant="outline" onClick={handleBackToScript}>
               Back to Script
             </Button>
           </div>
