@@ -1,11 +1,11 @@
 # Workspace version: 1.42.61
-fastapi==0.111.0
-uvicorn[standard]==0.29.0
-databutton==0.38.34
-ipykernel==6.29.5
+fastapi==0.103.2
+uvicorn[standard]==0.23.2
+# Removed databutton as it's not compatible
+ipykernel==6.25.2
 python-multipart==0.0.9
 openai
 beautifulsoup4
 requests
-crewai-tools
+# Removed crewai-tools as it might have compatibility issues
 elevenlabs
