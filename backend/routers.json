@@ -1,0 +1,29 @@
+{
+  "routers": {
+    "test": {
+      "name": "test",
+      "version": "2025-03-07T19:42:00",
+      "disableAuth": true
+    },
+    "story_acquisition": {
+      "name": "story_acquisition",
+      "version": "2025-03-06T17:05:58",
+      "disableAuth": true
+    },
+    "story_generator": {
+      "name": "story_generator",
+      "version": "2025-03-07T13:17:44",
+      "disableAuth": false
+    },
+    "voice_over": {
+      "name": "voice_over",
+      "version": "2025-03-07T15:22:34.295000Z",
+      "disableAuth": false
+    },
+    "script_generator": {
+      "name": "script_generator",
+      "version": "2025-03-07T13:28:04",
+      "disableAuth": false
+    }
+  }
+}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { useUserGuardContext } from "app";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Sparkles, Lightbulb, HelpCircle } from "lucide-react";
@@ -104,6 +104,9 @@ export default function StoryAcquisition() {
     setCurrentStep(prev => Math.max(prev - 1, 1));
   };
 
+  // Add useTransition hook for handling suspense
+  const [isPending, startTransition] = useTransition();
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateStep(currentStep)) return;
@@ -135,9 +138,12 @@ export default function StoryAcquisition() {
       
       console.log("Story submitted successfully:", data);
       
-      // Navigate to script generation page with the story ID
-      navigate(`/script-generation?id=${data.id}`, { 
-        state: { success: true, message: "Story created successfully! Now let's generate a script." } 
+      // Use startTransition to wrap the navigation which might cause suspense
+      startTransition(() => {
+        // Navigate to script generation page with the story ID
+        navigate(`/script-generation?id=${data.id}`, { 
+          state: { success: true, message: "Story created successfully! Now let's generate a script." } 
+        });
       });
     } catch (error) {
       console.error("Error submitting story:", error);
@@ -452,13 +458,13 @@ export default function StoryAcquisition() {
                   disabled={isSubmitting}
                   className={`px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg transition-all duration-300 flex items-center gap-2 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : 'hover:shadow-lg hover:shadow-indigo-500/30'}`}
                 >
-                  {isSubmitting ? (
+                  {isSubmitting || isPending ? (
                     <>
                       <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
-                      Processing
+                      {isSubmitting ? "Processing" : "Navigating..."}
                     </>
                   ) : (
                     <>
