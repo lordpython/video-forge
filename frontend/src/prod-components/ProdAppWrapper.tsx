@@ -1,4 +1,5 @@
-import { Outlet } from "react-router";
+import React from "react";
+import { Outlet } from "react-router-dom";
 
 /**
  * Just a wrapper for the app. This is used in production mode.

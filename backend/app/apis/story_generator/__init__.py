@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Query
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 import uuid
@@ -9,7 +9,15 @@ import json
 import asyncio
 import os
 import traceback
+import random
 from app.apis.story_acquisition import get_stories_for_user, StoryResponse
+
+# Development mode flag
+DEV_MODE = True
+
+# Development storage
+dev_storage_generations = {}
+dev_storage_generated_stories = {}
 
 # The following imports will be used in the CrewAI implementation
 # They are not at the top level to allow the app to work even if CrewAI is not installed
@@ -41,8 +49,18 @@ def sanitize_storage_key(key: str) -> str:
 def get_generations_for_user(user_id: str) -> List[StoryGenerationResponse]:
     """Get all story generation jobs for a specific user"""
     try:
-        generations_data = db.storage.json.get(f"story-generations-{sanitize_storage_key(user_id)}", default=[])
-        return [StoryGenerationResponse(**gen) for gen in generations_data]
+        if not DEV_MODE:
+            # Production mode - use databutton storage
+            generations_data = db.storage.json.get(f"story-generations-{sanitize_storage_key(user_id)}", default=[])
+            return [StoryGenerationResponse(**gen) for gen in generations_data]
+        else:
+            # Development mode - use local storage
+            if user_id in dev_storage_generations:
+                print(f"DEV MODE: Retrieving generations from dev storage for user {user_id}")
+                return [StoryGenerationResponse(**gen) for gen in dev_storage_generations[user_id]]
+            else:
+                print(f"DEV MODE: No generations found for user {user_id}")
+                return []
     except Exception as e:
         print(f"Error retrieving generations for user {user_id}: {e}")
         return []
@@ -50,16 +68,33 @@ def get_generations_for_user(user_id: str) -> List[StoryGenerationResponse]:
 def save_generations_for_user(user_id: str, generations: List[dict]) -> None:
     """Save story generation jobs for a specific user"""
     try:
-        db.storage.json.put(f"story-generations-{sanitize_storage_key(user_id)}", generations)
+        if not DEV_MODE:
+            # Production mode - use databutton storage
+            db.storage.json.put(f"story-generations-{sanitize_storage_key(user_id)}", generations)
+        else:
+            # Development mode - use local storage
+            print(f"DEV MODE: Saving generations to dev storage for user {user_id}")
+            dev_storage_generations[user_id] = generations
     except Exception as e:
         print(f"Error saving generations for user {user_id}: {e}")
-        raise HTTPException(status_code=500, detail="Failed to save generation data") from e
+        if not DEV_MODE:
+            raise HTTPException(status_code=500, detail="Failed to save generation data") from e
 
 def get_generated_stories_for_user(user_id: str) -> List[GeneratedStory]:
     """Get all generated stories for a specific user"""
     try:
-        stories_data = db.storage.json.get(f"generated-stories-{sanitize_storage_key(user_id)}", default=[])
-        return [GeneratedStory(**story) for story in stories_data]
+        if not DEV_MODE:
+            # Production mode - use databutton storage
+            stories_data = db.storage.json.get(f"generated-stories-{sanitize_storage_key(user_id)}", default=[])
+            return [GeneratedStory(**story) for story in stories_data]
+        else:
+            # Development mode - use local storage
+            if user_id in dev_storage_generated_stories:
+                print(f"DEV MODE: Retrieving generated stories from dev storage for user {user_id}")
+                return [GeneratedStory(**story) for story in dev_storage_generated_stories[user_id]]
+            else:
+                print(f"DEV MODE: No generated stories found for user {user_id}")
+                return []
     except Exception as e:
         print(f"Error retrieving generated stories for user {user_id}: {e}")
         return []
@@ -67,10 +102,17 @@ def get_generated_stories_for_user(user_id: str) -> List[GeneratedStory]:
 def save_generated_stories_for_user(user_id: str, stories: List[dict]) -> None:
     """Save generated stories for a specific user"""
     try:
-        db.storage.json.put(f"generated-stories-{sanitize_storage_key(user_id)}", stories)
+        if not DEV_MODE:
+            # Production mode - use databutton storage
+            db.storage.json.put(f"generated-stories-{sanitize_storage_key(user_id)}", stories)
+        else:
+            # Development mode - use local storage
+            print(f"DEV MODE: Saving generated stories to dev storage for user {user_id}")
+            dev_storage_generated_stories[user_id] = stories
     except Exception as e:
         print(f"Error saving generated stories for user {user_id}: {e}")
-        raise HTTPException(status_code=500, detail="Failed to save generated story") from e
+        if not DEV_MODE:
+            raise HTTPException(status_code=500, detail="Failed to save generated story") from e
 
 async def generate_story_with_crew_ai(user_id: str, story_id: str, generation_id: str):
     """Generate a story using CrewAI in the background"""
@@ -87,6 +129,51 @@ async def generate_story_with_crew_ai(user_id: str, story_id: str, generation_id
         # Update generation status to in-progress
         update_generation_status(user_id, generation_id, "in-progress", "Story generation has started")
         
+        # In development mode, use dummy data instead of CrewAI
+        if DEV_MODE:
+            print(f"DEV MODE: Generating mock story for user {user_id}, story {story_id}")
+            await asyncio.sleep(2)  # Simulate processing time
+            
+            # Create a mock generated story
+            generated_story = create_fallback_story(story)
+            
+            # Save the generated story
+            story_id = str(uuid.uuid4())
+            current_time = datetime.datetime.now().isoformat()
+            
+            new_story = {
+                "id": story_id,
+                "story_id": story.id,
+                "content": generated_story,
+                "metadata": {},
+                "created_at": current_time
+            }
+            
+            # Get existing generated stories for the user
+            existing_stories = get_generated_stories_for_user(user_id)
+            existing_stories_dict = [s.dict() for s in existing_stories]
+            
+            # Add the new generated story
+            existing_stories_dict.append(new_story)
+            
+            # Save updated generated stories list
+            save_generated_stories_for_user(user_id, existing_stories_dict)
+            
+            # Update generation status to completed
+            update_generation_status(
+                user_id, 
+                generation_id, 
+                "completed", 
+                "Story generated successfully",
+                datetime.datetime.now().isoformat()
+            )
+            
+            # Update story status
+            update_story_status(user_id, story_id, "completed")
+            
+            return
+        
+        # Production mode - use CrewAI
         # Retrieve OpenAI API key from secrets
         openai_api_key = db.secrets.get("OPENAI_API_KEY")
         if not openai_api_key:
@@ -182,14 +269,33 @@ async def generate_story_with_crew_ai(user_id: str, story_id: str, generation_id
             
             # Define tasks for each agent
             print("Defining AI tasks...")
+            # Prepare story type context
+            story_type_context = ""
+            if hasattr(story, 'story_type') and story.story_type:
+                story_type_context = f" This is a {story.story_type} type of story, so focus on finding real facts, events, and details related to this category."
+            
             research_task = Task(
-                description=f"Research the topic '{story.topic}' with focus on {story.genre} genre. Use the SerperDev search tool to find real information, facts, statistics, examples, and current trends. Also search for relevant images and videos that could be used later in video production. For imagery, describe what kinds of visuals would work well for this topic. Include at least 5 specific facts with sources.",
+                description=f"Research the topic '{story.topic}' with focus on {story.genre} genre.{story_type_context} Use the SerperDev search tool to find real information, facts, statistics, examples, and current trends. Also search for relevant images and videos that could be used later in video production. For imagery, describe what kinds of visuals would work well for this topic. Include at least 5 specific facts with sources.",
                 agent=researcher_agent,
                 expected_output="Detailed research findings about the topic with key concepts, factual information, sources, and visual/video recommendations"
             )
             
+            # Prepare video style and length context
+            video_style_context = ""
+            video_length_context = ""
+            story_type_context = ""
+            
+            if hasattr(story, 'video_style') and story.video_style:
+                video_style_context = f" Use a {story.video_style} style for the presentation."
+                
+            if hasattr(story, 'target_video_length') and story.target_video_length:
+                video_length_context = f" The final video should be approximately {story.target_video_length} minutes long, so structure your content accordingly."
+                
+            if hasattr(story, 'story_type') and story.story_type:
+                story_type_context = f" This is a {story.story_type} type of story, so focus on the narrative elements typical for this category."
+            
             writing_task = Task(
-                description=f"Write a {story.tone} story about {story.topic} for {story.target_audience} audience in {story.genre} genre. Use the research findings to create an informative and engaging narrative that incorporates real facts and information. Reference specific facts from the research and weave them naturally into the narrative. Include potential timestamps or sections where specific visuals or video clips could enhance the story.",
+                description=f"Write a {story.tone} story about {story.topic} for {story.target_audience} audience in {story.genre} genre.{story_type_context}{video_style_context}{video_length_context} Use the research findings to create an informative and engaging narrative that incorporates real facts and information. Reference specific facts from the research and weave them naturally into the narrative. Include potential timestamps or sections where specific visuals or video clips could enhance the story.",
                 agent=writer_agent,
                 context=[research_task],  # Use the research task output as context
                 expected_output="A complete draft story with proper structure that incorporates factual information"
@@ -317,6 +423,21 @@ async def generate_story_with_crew_ai(user_id: str, story_id: str, generation_id
 
 def create_fallback_story(story, extra_facts=""):
     """Create a fallback story when CrewAI fails"""
+    # Get story type if available
+    story_type_text = ""
+    if hasattr(story, 'story_type') and story.story_type:
+        story_type_text = f"\nThis {story.story_type} showcases real events and factual information that captivates the audience."
+    
+    # Get video style if available
+    video_style_text = ""
+    if hasattr(story, 'video_style') and story.video_style:
+        video_style_text = f"\nThe {story.video_style} presentation style enhances the storytelling experience."
+    
+    # Get target video length if available
+    video_length_text = ""
+    if hasattr(story, 'target_video_length') and story.target_video_length:
+        video_length_text = f"\nThis {story.target_video_length}-minute video provides a concise yet comprehensive overview."
+    
     base_story = f"""# {story.topic}
 
 ## Introduction
@@ -324,7 +445,7 @@ def create_fallback_story(story, extra_facts=""):
 In a world where {story.genre.lower()} is becoming increasingly relevant, 
 {story.topic} stands out as a fascinating subject. This story aims to explore
 the intricate details and implications for {story.target_audience.lower()} audiences,
-with a {story.tone.lower()} tone that engages and captivates.
+with a {story.tone.lower()} tone that engages and captivates.{story_type_text}{video_style_text}{video_length_text}
 
 ## Main Content
 
@@ -382,7 +503,7 @@ def update_story_status(user_id: str, story_id: str, status: str):
         print(f"Error updating story status: {e}")
 
 @router.post("/stories/{story_id}/generate", response_model=StoryGenerationResponse)
-async def start_story_generation(background_tasks: BackgroundTasks, story_id: str, user_id: str) -> StoryGenerationResponse:
+async def start_story_generation(background_tasks: BackgroundTasks, story_id: str, user_id: str = Query(..., description="User ID for authentication")) -> StoryGenerationResponse:
     """Start the story generation process for a specific story"""
     try:
         # Check if the story exists
@@ -427,7 +548,7 @@ async def start_story_generation(background_tasks: BackgroundTasks, story_id: st
         raise HTTPException(status_code=500, detail="Failed to start story generation") from e
 
 @router.get("/stories/{story_id}/generations", response_model=StoryGenerationsListResponse)
-async def list_story_generations(story_id: str, user_id: str) -> StoryGenerationsListResponse:
+async def list_story_generations(story_id: str, user_id: str = Query(..., description="User ID for authentication")) -> StoryGenerationsListResponse:
     """List all generation jobs for a specific story"""
     try:
         all_generations = get_generations_for_user(user_id)
@@ -438,7 +559,7 @@ async def list_story_generations(story_id: str, user_id: str) -> StoryGeneration
         raise HTTPException(status_code=500, detail="Failed to retrieve generation jobs") from e
 
 @router.get("/stories/{story_id}/generated", response_model=List[GeneratedStory])
-async def list_generated_stories(story_id: str, user_id: str) -> List[GeneratedStory]:
+async def list_generated_stories(story_id: str, user_id: str = Query(..., description="User ID for authentication")) -> List[GeneratedStory]:
     """List all generated stories for a specific story request"""
     try:
         all_stories = get_generated_stories_for_user(user_id)

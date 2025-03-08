@@ -3,6 +3,7 @@ import pathlib
 import json
 import dotenv
 from fastapi import FastAPI, APIRouter, Depends
+from fastapi.middleware.cors import CORSMiddleware
 
 dotenv.load_dotenv()
 
@@ -81,6 +82,16 @@ def get_firebase_config() -> dict | None:
 def create_app() -> FastAPI:
     """Create the app. This is called by uvicorn with the factory option to construct the app object."""
     app = FastAPI()
+    
+    # Configure CORS middleware
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    
     app.include_router(import_api_routers())
 
     for route in app.routes:

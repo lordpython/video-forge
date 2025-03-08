@@ -7,12 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import { AudioWaveform } from "components/AudioWaveform";
 import { ArrowLeft, ArrowRight, Film, Loader2, Play, Plus, Search, Upload, Video, X } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
+import { VideoClipSelector } from "@/components/VideoClipSelector";
 
 interface VideoClip {
   id: string;
@@ -366,14 +368,35 @@ const VideoClips: React.FC = () => {
       setIsGeneratingVideo(true);
       toast.info("Generating your video. This may take a few minutes...");
       
-      // In a real app, this would be an API call to generate the video
-      // For now, we'll simulate it with a timeout
-      await new Promise(resolve => setTimeout(resolve, 5000));
+      // Create the segment clips data structure for the API
+      const segmentClips = scriptSegments.map(segment => ({
+        segment_id: segment.id,
+        clip_id: segment.selected_clip?.id || "",
+        start_time: segment.start_time,
+        end_time: segment.end_time
+      }));
       
-      // Simulate a successful video generation
-      setFinalVideoUrl("https://example.com/generated-videos/your-video.mp4");
+      // Call the API to generate the video
+      const response = await brain.generate_video({
+        user_id: user?.uid || ""
+      }, {
+        script_id: scriptId || "",
+        voice_over_id: voiceOverId || "",
+        segment_clips: segmentClips
+      });
       
-      toast.success("Video generated successfully!");
+      const data = await response.json();
+      
+      // Check if we need to poll for completion or if it's instantly available
+      if (data.status === "processing") {
+        toast.success("Video generation started. You'll be notified when it's ready.");
+        // You could set up polling here to check the status periodically
+      } else if (data.status === "completed") {
+        setFinalVideoUrl(data.url);
+        toast.success("Video generated successfully!");
+      } else {
+        toast.error(`Video generation status: ${data.status}`);
+      }
     } catch (error) {
       console.error("Error generating video:", error);
       toast.error("Failed to generate video");
@@ -548,140 +571,140 @@ const VideoClips: React.FC = () => {
             </Card>
           </div>
 
-          {/* Right column - Video clips library */}
+          {/* Right column - Video clips library and selected segment */}
           <div className="lg:col-span-7 space-y-6">
             <Card className="bg-gray-900 border-gray-800">
               <CardHeader>
-                <CardTitle>Video Clips Library</CardTitle>
+                <CardTitle>
+                  {selectedSegmentId ? (
+                    <span className="flex items-center gap-2">
+                      <span>Segment: {scriptSegments.find(s => s.id === selectedSegmentId)?.section_type.replace('_', ' ').toUpperCase()}</span>
+                      <Badge variant="outline" className="ml-2 bg-indigo-900/30 text-indigo-300 border-indigo-500">
+                        Selected
+                      </Badge>
+                    </span>
+                  ) : "Select a Script Segment"}
+                </CardTitle>
                 <CardDescription>
                   {selectedSegmentId 
-                    ? `Select a clip for ${scriptSegments.find(s => s.id === selectedSegmentId)?.section_type.replace('_', ' ').toUpperCase()}`
-                    : "Click on a script segment first, then select a clip for it"}
+                    ? `Choose a video clip for this segment or search for specific content`
+                    : "Click on a script segment on the left to start assigning video clips"}
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex gap-2 mb-6">
-                  <div className="relative flex-1">
-                    <Input
-                      type="text"
-                      placeholder="Search for clips..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="bg-gray-800 border-gray-700"
-                    />
-                    {searchQuery && (
-                      <button
-                        className="absolute right-10 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
-                        onClick={handleClearSearch}
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    )}
-                  </div>
-                  <Button 
-                    onClick={handleSearchClips}
-                    disabled={searchingClips || !searchQuery.trim()}
+                {selectedSegmentId ? (
+                  // Use our new VideoClipSelector component when a segment is selected
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
                   >
-                    {searchingClips ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Search className="h-4 w-4" />
-                    )}
-                  </Button>
-                  <Button variant="outline">
-                    <Upload className="h-4 w-4 mr-2" />
-                    Upload
-                  </Button>
-                </div>
-                
-                {loadingClips ? (
-                  <div className="flex justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
-                  </div>
-                ) : availableClips.length === 0 ? (
-                  <div className="text-center py-12 text-gray-400">
-                    <Video className="h-12 w-12 mx-auto mb-4 text-gray-600" />
-                    <p className="text-lg font-medium mb-2">No clips found</p>
-                    <p>Try a different search term or upload your own clips</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    {availableClips.map((clip) => (
-                      <div 
-                        key={clip.id}
-                        onClick={() => selectedSegmentId && handleSelectClip(clip)}
-                        className={`rounded-lg overflow-hidden border border-gray-800 transition-all ${
-                          selectedSegmentId 
-                            ? 'cursor-pointer hover:border-indigo-500 hover:scale-105 transform transition-transform' 
-                            : 'opacity-70 cursor-not-allowed'
-                        }`}
-                      >
-                        <div className="aspect-video relative">
-                          <img 
-                            src={clip.thumbnail_url} 
-                            alt={clip.title}
-                            className="w-full h-full object-cover"
-                          />
-                          <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
-                            {clip.duration}s
-                          </div>
-                          <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 bg-black/50 transition-opacity">
-                            <Play className="h-10 w-10 text-white" />
-                          </div>
-                        </div>
-                        <div className="p-2">
-                          <h3 className="font-medium text-sm">{clip.title}</h3>
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {clip.tags.slice(0, 2).map((tag, i) => (
-                              <span 
-                                key={i} 
-                                className="text-xs bg-gray-800 text-gray-300 px-1.5 py-0.5 rounded"
-                              >
-                                {tag}
-                              </span>
-                            ))}
-                            {clip.tags.length > 2 && (
-                              <span className="text-xs text-gray-400">+{clip.tags.length - 2}</span>
-                            )}
-                          </div>
-                        </div>
+                    <div className="mb-4">
+                      <h3 className="text-sm font-medium mb-1">Segment Content:</h3>
+                      <div className="bg-gray-800/70 rounded p-3 text-sm text-gray-300">
+                        {scriptSegments.find(s => s.id === selectedSegmentId)?.content}
                       </div>
-                    ))}
+                    </div>
+
+                    <VideoClipSelector
+                      selectedClip={scriptSegments.find(s => s.id === selectedSegmentId)?.selected_clip}
+                      segmentContent={scriptSegments.find(s => s.id === selectedSegmentId)?.content || ""}
+                      onSelectClip={(clip) => handleSelectClip(clip)}
+                      onRemoveClip={() => selectedSegmentId && handleRemoveClip(selectedSegmentId)}
+                    />
+                  </motion.div>
+                ) : (
+                  // Display instruction when no segment is selected
+                  <div className="text-center py-16 px-4">
+                    <div className="bg-indigo-900/20 border border-indigo-800/30 rounded-lg p-6 max-w-md mx-auto">
+                      <ArrowLeft className="h-12 w-12 text-indigo-400 mx-auto mb-4" />
+                      <h3 className="text-xl font-medium mb-2">Select a Script Segment</h3>
+                      <p className="text-gray-400 mb-4">
+                        Choose a segment from the left panel to assign a video clip to it
+                      </p>
+                      <div className="text-sm text-gray-500">
+                        <p>Tip: You need to assign a video clip to each segment before generating your final video</p>
+                      </div>
+                    </div>
                   </div>
                 )}
               </CardContent>
             </Card>
             
-            {/* Video preview */}
-            {finalVideoUrl && (
-              <Card className="bg-gray-900 border-gray-800">
-                <CardHeader>
-                  <CardTitle>Video Preview</CardTitle>
-                  <CardDescription>Preview your generated video</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="aspect-video bg-gray-800 rounded-lg overflow-hidden">
-                    <video 
-                      controls
-                      className="w-full h-full"
-                      poster="https://images.unsplash.com/photo-1626814026160-2237a95fc5a0?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80"
-                    >
-                      <source src={finalVideoUrl} type="video/mp4" />
-                      Your browser does not support the video tag.
-                    </video>
+            {/* Video generation and preview */}
+            <Card className="bg-gray-900 border-gray-800">
+              <CardHeader>
+                <CardTitle>Video Generation</CardTitle>
+                <CardDescription>
+                  {scriptSegments.every(segment => segment.selected_clip) 
+                    ? "All segments have clips assigned. Ready to generate your video!"
+                    : `Assign clips to ${scriptSegments.filter(segment => !segment.selected_clip).length} more segments to generate your video`}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {finalVideoUrl ? (
+                  // Show video player when video is generated
+                  <div>
+                    <div className="aspect-video bg-gray-800 rounded-lg overflow-hidden">
+                      <video 
+                        controls
+                        className="w-full h-full"
+                        poster="https://images.unsplash.com/photo-1626814026160-2237a95fc5a0?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80"
+                      >
+                        <source src={finalVideoUrl} type="video/mp4" />
+                        Your browser does not support the video tag.
+                      </video>
+                    </div>
+                    <div className="mt-4 flex justify-end">
+                      <Button 
+                        onClick={handleContinueToFinalVideo}
+                        className="bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-700 hover:to-purple-900"
+                      >
+                        Continue to Final Video
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                </CardContent>
-                <CardFooter className="border-t border-gray-800 pt-6 flex justify-end">
-                  <Button 
-                    onClick={handleContinueToFinalVideo}
-                    className="bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-700 hover:to-purple-900"
-                  >
-                    Continue to Final Video
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </CardFooter>
-              </Card>
-            )}
+                ) : (
+                  // Show generation progress or segment status
+                  <div className="py-6">
+                    <div className="mb-6">
+                      <div className="flex justify-between mb-2">
+                        <span className="text-sm font-medium">Segments with clips assigned</span>
+                        <span className="text-sm font-medium">
+                          {scriptSegments.filter(segment => segment.selected_clip).length}/{scriptSegments.length}
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-800 rounded-full h-2.5">
+                        <div 
+                          className="bg-indigo-600 h-2.5 rounded-full transition-all duration-500"
+                          style={{ width: `${(scriptSegments.filter(segment => segment.selected_clip).length / scriptSegments.length) * 100}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                    
+                    {isGeneratingVideo ? (
+                      <div className="text-center py-8">
+                        <Loader2 className="h-10 w-10 animate-spin text-purple-500 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium mb-2">Generating Your Video</h3>
+                        <p className="text-gray-400 max-w-md mx-auto">
+                          We're combining your script, voice-over, and selected clips to create your video. This may take a few minutes.
+                        </p>
+                      </div>
+                    ) : (
+                      <Button 
+                        onClick={handleGenerateVideo}
+                        disabled={scriptSegments.some(segment => !segment.selected_clip)}
+                        className="w-full h-12 bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-700 hover:to-purple-900 transition-all"
+                      >
+                        <Film className="mr-2 h-5 w-5" />
+                        Generate Final Video
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>

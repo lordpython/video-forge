@@ -1,16 +1,16 @@
-import { useUserGuardContext } from "app";
+import { useUserGuardContext } from "../app/auth/UserGuard";
 import { useNavigate, useLocation } from "react-router-dom";
 import { ChevronLeft, Loader2, Play, Check, FileText, AlertCircle, RefreshCw, CheckCircle2, MoveRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState, useEffect, useCallback, useTransition } from "react";
-import brain from "brain";
-import { StoryResponse, GeneratedScript, ScriptSection as ScriptSectionType, ScriptRequest, ScriptGenerationResponse } from "types";
-import { Button } from "@/components/ui/button";
-import { ScriptSection } from "components/ScriptSection";
+import brain from "../brain";
+import { StoryResponse, GeneratedScript, ScriptSection as ScriptSectionType, ScriptRequest, ScriptGenerationResponse } from "../types";
+import { Button } from "../components/ui/button";
+import { ScriptSection } from "../components/ScriptSection";
 import { toast } from "sonner";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
+import { Separator } from "../components/ui/separator";
 import { format } from "date-fns";
 
 export default function ScriptGeneration() {
@@ -21,6 +21,7 @@ export default function ScriptGeneration() {
   const storyId = searchParams.get('id');
   const [story, setStory] = useState<StoryResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [generatedScripts, setGeneratedScripts] = useState<GeneratedScript[]>([]);
   const [scriptGenerations, setScriptGenerations] = useState<ScriptGenerationResponse[]>([]);
   const [activeScriptId, setActiveScriptId] = useState<string | null>(null);
@@ -519,7 +520,6 @@ export default function ScriptGeneration() {
                             {script.approved && (
                               <CheckCircle2 className="mr-1 h-3 w-3 text-green-400" />
                             )}
-                            Version {index + 1}
                           </TabsTrigger>
                         ))}
                       </TabsList>

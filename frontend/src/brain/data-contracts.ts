@@ -290,6 +290,11 @@ export interface StoryRequest {
    * Additional details or requirements
    */
   additional_details?: string | null;
+  /**
+   * Research Keywords
+   * Keywords to guide web research for the video content
+   */
+  research_keywords?: string[] | null;
 }
 
 /** StoryResponse */

@@ -1,4 +1,4 @@
-import { useState, useEffect, useTransition } from "react";
+import React, { useState, useEffect, useTransition } from "react";
 import { useUserGuardContext } from "app";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Sparkles, Lightbulb, HelpCircle } from "lucide-react";
@@ -12,40 +12,112 @@ interface StoryFormData {
   targetAudience: string;
   additionalDetails: string;
   tone: string;
+  researchKeywords: string;
+  targetVideoLength: string;
+  videoStyle: string;
+  storyType: string;
 }
+
+interface ContentTypeConfig {
+  examples: string[];
+  styleSuggestions: string[];
+  lengthRecommendation: string;
+}
+
+const CONTENT_TYPE_CONFIG: Record<string, ContentTypeConfig> = {
+  short_form: {
+    examples: [
+      "Top 10 productivity tools for remote work",
+      "5-minute healthy breakfast ideas for busy professionals",
+      "Essential tech tips to improve your workflow"
+    ],
+    styleSuggestions: ["Fast-paced", "Eye-catching", "Trendy music"],
+    lengthRecommendation: "1-3 minutes"
+  },
+  entertainment: {
+    examples: [
+      "Behind the scenes: How movies are made",
+      "Top 5 upcoming video games of the year",
+      "Amazing talent show performances compilation"
+    ],
+    styleSuggestions: ["Dramatic", "Humorous", "Suspenseful"],
+    lengthRecommendation: "8-15 minutes"
+  },
+  personal_use: {
+    examples: [
+      "My journey through the national parks",
+      "How I renovated my home office on a budget",
+      "A day in the life of a software developer"
+    ],
+    styleSuggestions: ["Personal", "Heartfelt", "Uplifting"],
+    lengthRecommendation: "5-10 minutes"
+  },
+  news_information: {
+    examples: [
+      "Latest advancements in renewable energy",
+      "How AI is transforming healthcare",
+      "Economic trends shaping the future of work"
+    ],
+    styleSuggestions: ["Informative", "Objective", "Engaging"],
+    lengthRecommendation: "5-15 minutes"
+  },
+  educational: {
+    examples: [
+      "Mastering data visualization in 20 minutes",
+      "Understanding blockchain technology: A beginner's guide",
+      "The science behind effective learning techniques"
+    ],
+    styleSuggestions: ["Clear", "Concise", "Engaging"],
+    lengthRecommendation: "10-30 minutes"
+  },
+};
 
 const initialFormData: StoryFormData = {
   topic: "",
-  genre: "technology",
-  targetAudience: "general",
+  genre: "short_form",
+  targetAudience: "content_creators",
   additionalDetails: "",
-  tone: "professional",
+  tone: "energetic",
+  researchKeywords: "",
+  targetVideoLength: "",
+  videoStyle: "",
+  storyType: ""
 };
 
+// Add real story type options
+const storyTypes = [
+  { id: "true_crime", name: "True Crime" },
+  { id: "success_story", name: "Success Story" },
+  { id: "biography", name: "Biography" },
+  { id: "historical", name: "Historical Event" },
+  { id: "investigation", name: "Investigation" },
+  { id: "scandal", name: "Scandal/Controversy" }
+];
+
 const genres = [
-  { id: "technology", name: "Technology" },
-  { id: "business", name: "Business" },
-  { id: "education", name: "Education" },
-  { id: "entertainment", name: "Entertainment" },
-  { id: "lifestyle", name: "Lifestyle" },
-  { id: "science", name: "Science" },
-  { id: "health", name: "Health" },
+  { id: "short_form", name: "Short Form Content" },
+  { id: "entertainment", name: "Entertainment & Engagement" },
+  { id: "personal_use", name: "Personal Use" },
+  { id: "news_information", name: "News & Information" },
+  { id: "educational", name: "Educational Content" },
 ];
 
 const audiences = [
-  { id: "general", name: "General Audience" },
-  { id: "professionals", name: "Professionals" },
-  { id: "students", name: "Students" },
-  { id: "enthusiasts", name: "Enthusiasts" },
-  { id: "executives", name: "Executives" },
+  { id: "content_creators", name: "Content Creators" },
+  { id: "social_media_managers", name: "Social Media Managers" },
+  { id: "influencers", name: "Influencers" },
+  { id: "brands", name: "Brands" },
+  { id: "individuals", name: "Individuals & Families" },
+  { id: "educators", name: "Educators & Students" },
 ];
 
 const tones = [
-  { id: "professional", name: "Professional" },
-  { id: "conversational", name: "Conversational" },
-  { id: "inspirational", name: "Inspirational" },
-  { id: "humorous", name: "Humorous" },
+  { id: "energetic", name: "Energetic" },
+  { id: "casual", name: "Casual" },
   { id: "serious", name: "Serious" },
+  { id: "professional", name: "Professional" },
+  { id: "friendly", name: "Friendly" },
+  { id: "informative", name: "Informative" },
 ];
 
 export default function StoryAcquisition() {
@@ -54,6 +126,7 @@ export default function StoryAcquisition() {
   const [formData, setFormData] = useState<StoryFormData>(initialFormData);
   const [currentStep, setCurrentStep] = useState(1);
   const [exampleVisible, setExampleVisible] = useState(false);
+  const [keywordsExampleVisible, setKeywordsExampleVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Partial<StoryFormData>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -63,7 +136,18 @@ export default function StoryAcquisition() {
     setSubmitError(null);
   }, [currentStep]);
 
-  const totalSteps = 3;
+  useEffect(() => {
+    if (formData.genre && CONTENT_TYPE_CONFIG[formData.genre]) {
+      const config = CONTENT_TYPE_CONFIG[formData.genre];
+      setFormData(prev => ({
+        ...prev,
+        targetVideoLength: config.lengthRecommendation.split('-')[0].trim(),
+        videoStyle: config.styleSuggestions[0] || ''
+      }));
+    }
+  }, [formData.genre]);
+
+  const totalSteps = 4;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -87,6 +171,20 @@ export default function StoryAcquisition() {
     if (step === 1) {
       if (!formData.topic.trim()) {
         newErrors.topic = "Please provide a topic for your video";
+      }
+      
+      if (formData.genre === 'short_form' && !formData.targetVideoLength) {
+        newErrors.targetVideoLength = "Duration is required for short-form content";
+      }
+      
+      const [min, max] = (CONTENT_TYPE_CONFIG[formData.genre]?.lengthRecommendation || '-').split('-').map(Number);
+      const inputLength = parseInt(formData.targetVideoLength);
+      if (!isNaN(inputLength) && (inputLength < min || inputLength > max)) {
+        newErrors.targetVideoLength = `Duration must be between ${min} and ${max} minutes`;
+      }
+
+      if (!formData.storyType && formData.genre !== 'short_form') {
+        newErrors.storyType = "Please select a story type";
       }
     }
     
@@ -115,14 +213,22 @@ export default function StoryAcquisition() {
     
     try {
       // Format data for API (camelCase to snake_case)
-      const storyRequest: StoryRequest = {
+      const storyRequest = ({
         topic: formData.topic,
         genre: formData.genre,
         target_audience: formData.targetAudience,
         tone: formData.tone,
-        additional_details: formData.additionalDetails || null
+        additional_details: formData.additionalDetails || null,
+        research_keywords: formData.researchKeywords ? formData.researchKeywords.split(',').map(kw => kw.trim()).filter(kw => kw !== '') : null,
+        target_video_length: formData.targetVideoLength ? formData.targetVideoLength : null,
+        video_style: formData.videoStyle ? formData.videoStyle : null,
+        story_type: formData.storyType || null
+      } as unknown) as StoryRequest & { 
+        target_video_length?: string | null; 
+        video_style?: string | null;
+        story_type?: string | null;
       };
-      
+
       // Get user ID from the authenticated user
       const userId = user?.uid;
       
@@ -155,6 +261,10 @@ export default function StoryAcquisition() {
 
   const toggleExample = () => {
     setExampleVisible(!exampleVisible);
+  };
+
+  const toggleKeywordsExample = () => {
+    setKeywordsExampleVisible(!keywordsExampleVisible);
   };
 
   return (
@@ -237,7 +347,7 @@ export default function StoryAcquisition() {
                         name="topic"
                         value={formData.topic}
                         onChange={handleInputChange}
-                        placeholder="e.g., The future of AI in healthcare"
+                        placeholder="e.g., 5 amazing gadgets under $50 that will change your life"
                         className={`w-full px-4 py-3 bg-gray-900/60 border ${errors.topic ? 'border-red-500' : 'border-gray-700'} rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200`}
                       />
                       <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
@@ -248,7 +358,7 @@ export default function StoryAcquisition() {
                       <p className="mt-2 text-sm text-red-500">{errors.topic}</p>
                     )}
                     <p className="mt-2 text-sm text-gray-400">
-                      This will be the core subject of your video. Be specific for best results.
+                      Provide a detailed description of your video concept. The more specific details you include about your topic, angle, and key points, the better our AI can create a script that matches your vision.
                     </p>
                   </div>
 
@@ -267,18 +377,12 @@ export default function StoryAcquisition() {
                             <div>
                               <p className="font-medium">Example Topics:</p>
                               <ul className="mt-2 space-y-2 text-sm text-gray-300">
-                                <li>
-                                  <span className="font-medium text-indigo-400">"How AI is Revolutionizing Customer Service"</span>
-                                  <p className="text-gray-400 mt-1">A business-focused video explaining AI applications in customer support.</p>
-                                </li>
-                                <li>
-                                  <span className="font-medium text-indigo-400">"The Science Behind CRISPR Gene Editing"</span>
-                                  <p className="text-gray-400 mt-1">An educational video explaining complex scientific concepts.</p>
-                                </li>
-                                <li>
-                                  <span className="font-medium text-indigo-400">"5 Ways Renewable Energy is Changing the World"</span>
-                                  <p className="text-gray-400 mt-1">An informative video with statistics and case studies.</p>
-                                </li>
+                                {CONTENT_TYPE_CONFIG[formData.genre]?.examples.map(example => (
+                                  <li key={example}>
+                                    <span className="font-medium text-indigo-400">{example}</span>
+                                    <p className="text-gray-400 mt-1">A {formData.genre} video perfect for {formData.targetAudience}.</p>
+                                  </li>
+                                ))}
                               </ul>
                             </div>
                           </div>
@@ -304,6 +408,84 @@ export default function StoryAcquisition() {
                     </select>
                     <p className="mt-2 text-sm text-gray-400">
                       The genre helps determine the style and approach of your video.
+                    </p>
+                  </div>
+
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium">Target Video Length (minutes)</label>
+                    <input
+                      type="number"
+                      name="targetVideoLength"
+                      value={formData.targetVideoLength}
+                      onChange={handleInputChange}
+                      min={CONTENT_TYPE_CONFIG[formData.genre]?.lengthRecommendation.split('-')[0]}
+                      max={CONTENT_TYPE_CONFIG[formData.genre]?.lengthRecommendation.split('-')[1]}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                      aria-label="Target video length in minutes"
+                      placeholder="Enter length in minutes"
+                    />
+                    {errors.targetVideoLength && (
+                      <p className="text-red-500 text-sm mt-1">{errors.targetVideoLength}</p>
+                    )}
+                    <p className="text-sm text-gray-400 mt-2">
+                      Recommended: {CONTENT_TYPE_CONFIG[formData.genre]?.lengthRecommendation} minutes
+                    </p>
+                  </div>
+
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium">Video Style</label>
+                    <div className="mt-1 flex flex-wrap gap-2">
+                      {CONTENT_TYPE_CONFIG[formData.genre]?.styleSuggestions.map((style) => (
+                        <button
+                          type="button"
+                          key={style}
+                          onClick={() => setFormData({...formData, videoStyle: style})}
+                          className={`px-3 py-1 rounded-full text-sm ${
+                            formData.videoStyle === style
+                              ? 'bg-indigo-600 text-white'
+                              : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                          }`}
+                        >
+                          {style}
+                        </button>
+                      ))}
+                      <input
+                        type="text"
+                        name="videoStyle"
+                        value={formData.videoStyle}
+                        onChange={handleInputChange}
+                        placeholder="Custom style..."
+                        className="flex-1 min-w-[200px] bg-gray-800 rounded-lg px-3 py-1 text-sm"
+                      />
+                    </div>
+                    <p className="mt-2 text-sm text-gray-400">
+                      Recommended length: {CONTENT_TYPE_CONFIG[formData.genre]?.lengthRecommendation}
+                    </p>
+                  </div>
+
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium mb-2">
+                      Real Story Type
+                    </label>
+                    <select
+                      name="storyType"
+                      value={formData.storyType}
+                      onChange={handleInputChange}
+                      className="mt-1 block w-full px-4 py-3 bg-gray-900/60 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+                      aria-label="Select a real story type"
+                    >
+                      <option value="">Select a story type...</option>
+                      {storyTypes.map(type => (
+                        <option key={type.id} value={type.id}>
+                          {type.name}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.storyType && (
+                      <p className="text-red-500 text-sm mt-1">{errors.storyType}</p>
+                    )}
+                    <p className="text-sm text-gray-400 mt-2">
+                      Select a real story category to help our AI generate relevant content
                     </p>
                   </div>
                 </motion.div>
@@ -381,6 +563,82 @@ export default function StoryAcquisition() {
                   transition={{ duration: 0.3 }}
                   className="space-y-6"
                 >
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <label htmlFor="researchKeywords" className="block text-lg font-medium">
+                        Research Keywords (optional)
+                      </label>
+                      <button 
+                        type="button" 
+                        onClick={toggleKeywordsExample}
+                        className="text-indigo-400 hover:text-indigo-300 text-sm flex items-center gap-1"
+                      >
+                        <HelpCircle className="h-4 w-4" />
+                        See Examples
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        id="researchKeywords"
+                        name="researchKeywords"
+                        value={formData.researchKeywords}
+                        onChange={handleInputChange}
+                        placeholder="e.g., latest advancements, statistics, future predictions"
+                        className="w-full px-4 py-3 bg-gray-900/60 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+                      />
+                    </div>
+                    <p className="mt-2 text-sm text-gray-400">
+                      Comma-separated keywords to guide research for your video content. These help our AI find relevant information.
+                    </p>
+                  </div>
+
+                  <AnimatePresence>
+                    {keywordsExampleVisible && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="p-4 bg-gray-800/50 border border-gray-700 rounded-lg">
+                          <div className="flex items-start gap-2 mb-2">
+                            <Lightbulb className="h-5 w-5 text-yellow-400 flex-shrink-0 mt-1" />
+                            <div>
+                              <p className="font-medium">Example Keywords:</p>
+                              <ul className="mt-2 space-y-2 text-sm text-gray-300">
+                                <li>
+                                  <span className="font-medium text-indigo-400">For AI topic:</span>
+                                  <p className="text-gray-400 mt-1">"machine learning breakthroughs, ethical concerns, AI applications, industry adoption"</p>
+                                </li>
+                                <li>
+                                  <span className="font-medium text-indigo-400">For Climate Change:</span>
+                                  <p className="text-gray-400 mt-1">"recent studies, mitigation strategies, global impact, renewable solutions"</p>
+                                </li>
+                                <li>
+                                  <span className="font-medium text-indigo-400">For Business Strategy:</span>
+                                  <p className="text-gray-400 mt-1">"market trends, case studies, industry benchmarks, competitive analysis"</p>
+                                </li>
+                              </ul>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              )}
+
+              {currentStep === 4 && (
+                <motion.div
+                  key="step3"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.3 }}
+                  className="space-y-6"
+                >
                   {submitError && (
                     <div className="p-4 bg-red-900/30 border border-red-700 rounded-lg text-red-200">
                       <div className="flex items-center gap-2">
@@ -417,6 +675,9 @@ export default function StoryAcquisition() {
                       <p><span className="text-gray-400">Genre:</span> {genres.find(g => g.id === formData.genre)?.name}</p>
                       <p><span className="text-gray-400">Target Audience:</span> {audiences.find(a => a.id === formData.targetAudience)?.name}</p>
                       <p><span className="text-gray-400">Tone:</span> {tones.find(t => t.id === formData.tone)?.name}</p>
+                      {formData.storyType && (
+                        <p><span className="text-gray-400">Story Type:</span> {storyTypes.find(s => s.id === formData.storyType)?.name}</p>
+                      )}
                       {formData.additionalDetails && (
                         <div>
                           <p className="text-gray-400">Additional Details:</p>
@@ -456,7 +717,7 @@ export default function StoryAcquisition() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className={`px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg transition-all duration-300 flex items-center gap-2 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : 'hover:shadow-lg hover:shadow-indigo-500/30'}`}
+                  className={`px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg transition-all duration-300 flex items-center gap-2 ${isSubmitting || isPending ? 'opacity-70 cursor-not-allowed' : 'hover:shadow-lg hover:shadow-indigo-500/30'}`}
                 >
                   {isSubmitting || isPending ? (
                     <>
