@@ -166,7 +166,7 @@
     "livekit-client": "2.7.3",
     "lodash": "4.17.21",
     "lucide-react": "^0.479.0",
-    "mammoth": "1.8.0",
+    "mammoth": "1.11.0",
     "mapbox-gl": "3.1.2",
     "mathjs": "14.2.1",
     "mermaid": "^10.9.0",
